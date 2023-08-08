@@ -67,4 +67,86 @@ public class IncreaseMoneyRequestService implements IncreaseMoneyRequestUseCase 
         return null;
     }
 
+    @Override
+    public MoneyChangingRequest increaseMoneyRequestAsync(final IncreaseMoneyRequestCommand command) {
+
+
+        // Subtask
+        // 각 서비스에 특정 membershipId 로 Validation 을 하기위한 Task.
+        // 1. Subtask, Task
+        final SubTask validMemberTask = SubTask.builder()
+            .subTaskName("validMemberTask : " + "맴버십 유효성 검사")
+            .membershipID(command.getTargetMembershipId())
+            .taskType("membership")
+            .status("ready")
+            .build();
+
+        // Banking Sub task
+        // Banking Account Validation
+        final SubTask validBankingAccountTask = SubTask.builder()
+            .subTaskName("validBankingAccountTask : " + "뱅킹 계좌 유효성 검사")
+            .membershipID(command.getTargetMembershipId())
+            .taskType("banking")
+            .status("ready")
+            .build();
+        // Amount Money Firmbanking --> 무조건 ok 받았다고 가정.
+
+        List<SubTask> subTaskList = new ArrayList<>();
+        subTaskList.add(validMemberTask);
+        subTaskList.add(validBankingAccountTask);
+
+        RechargingMoneyTask task = RechargingMoneyTask.builder()
+            .taskID(UUID.randomUUID().toString())
+            .taskName("Increase Money Task / 머니 충전 Task")
+            .subTaskList(subTaskList)
+            .moneyAmount(command.getAmount())
+            .membershipID(command.getTargetMembershipId())
+            .toBankName("fastcampus")
+            .build();
+
+
+        // 2. Kafka Cluster Produce
+        // Task Produce
+        sendRechargingMoneyTaskPort.sendRechargingMoneyTaskPort(task);
+        countDownLatchManager.addCountDownLatch(task.getTaskID());
+
+
+        // 3. Wait
+        try {
+            countDownLatchManager.getCountDownLatch(task.getTaskID()).await();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+        // 3-1. task-consumer
+        // 등록된 sub-task, status 모두 ok -> task 결과물 Produce
+
+        // 4. Task result consume
+        // 받은 응답을 다시, countDownLatchManager 를 통해서 결과 데이터를 받아야 해요.
+        String result = countDownLatchManager.getDataForKey(task.getTaskID());
+
+        if (result.equals("success")) {
+            // 4-1. Consume ok, Logic
+            MemberMoneyJpaEntity memberMoneyJpaEntity = increaseMoneyPort.increaseMoney(
+                new MemberMoney.MembershipId(command.getTargetMembershipId())
+                , command.getAmount());
+
+            if (memberMoneyJpaEntity != null) {
+                return mapper.mapToDomainEntity(increaseMoneyPort.createMoneyChangingRequest(
+                        new MoneyChangingRequest.TargetMembershipId(command.getTargetMembershipId()),
+                        new MoneyChangingRequest.MoneyChangingType(1),
+                        new MoneyChangingRequest.ChangingMoneyAmount(command.getAmount()),
+                        new MoneyChangingRequest.MoneyChangingStatus(1),
+                        new MoneyChangingRequest.Uuid(UUID.randomUUID().toString())
+                    )
+                );
+            }
+        } else {
+            // 4-2. Consume fail, Logic
+            return null;
+        }
+        // 5. Consume ok, Logic
+        return null;
+    }
+
 }
