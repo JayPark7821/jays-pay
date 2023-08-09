@@ -36,7 +36,7 @@ services:
       - SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=org.hibernate.dialect.MySQL5InnoDBDialect
       - SPRING_JPA_HIBERNATE_DDL_AUTO=create-drop
       - KAFKA_CLUSTERS_BOOTSTRAPSERVERS=kafka:29092
-      - LOGGING_TOPIC=fastcampus.logging.out.stdout
+      - LOGGING_TOPIC=jayspay-logging.out.stdout
 
   banking-service:
     image: jays-pay-banking-service:1.0.0
@@ -57,7 +57,8 @@ services:
       - SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=org.hibernate.dialect.MySQL5InnoDBDialect
       - SPRING_JPA_HIBERNATE_DDL_AUTO=create-drop
       - KAFKA_CLUSTERS_BOOTSTRAPSERVERS=kafka:29092
-      - LOGGING_TOPIC=fastcampus.logging.out.stdout
+      - LOGGING_TOPIC=jayspay-logging.out.stdout
+      - SERVICE_MEMBERSHIP_URL=http://membership-service:8080
 
   money-service:
     image: jays-pay-money-service:1.0.0
@@ -78,7 +79,11 @@ services:
       - SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=org.hibernate.dialect.MySQL5InnoDBDialect
       - SPRING_JPA_HIBERNATE_DDL_AUTO=create-drop
       - KAFKA_CLUSTERS_BOOTSTRAPSERVERS=kafka:29092
-      - LOGGING_TOPIC=fastcampus.logging.out.stdout
+      - LOGGING_TOPIC=jayspay-logging.out.stdout
+      - TASK_TOPIC=jayspay.task.topic
+      - TASK_RESULT_TOPIC=jayspay.task.result.topic
+      - SERVICE_MEMBERSHIP_URL=http://membership-service:8080
+
 
   zookeeper:
     image: 'arm64v8/zookeeper:3.8'
@@ -92,7 +97,7 @@ services:
       - ZOO_TLS_QUORUM_CLIENT_AUTH=none
 
   kafka:
-    image: 'bitnami/kafka:3.4.0'
+    image: 'bitnami/kafka@sha256:e1870e20581f8ca7507986be980c64ceb4d9138ffad1b380c1036d5a82ec1bfe'
     networks:
       - jayspay_network
     ports:
@@ -105,6 +110,8 @@ services:
       - KAFKA_CFG_ADVERTISED_LISTENERS=LC://kafka:29092,LX://${DOCKER_HOST_IP:-localhost}:9092
       - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=LC:PLAINTEXT,LX:PLAINTEXT
       - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=LC
+      - BITNAMI_DEBUG=true
+      - KAFKA_ENABLE_KRAFT=false
     depends_on:
       - zookeeper
 
@@ -125,6 +132,57 @@ services:
       - KAFKA_CLUSTERS_0_ZOOKEEPER=zookeeper:2181
 
 
+  logging-consumer:
+    image: jays-pay-logging-consumer:1.0.0
+    networks:
+      - jayspay_network
+    restart: always
+    depends_on:
+      - kafka
+      - zookeeper
+    environment:
+      - KAFKA_CLUSTERS_BOOTSTRAPSERVERS=kafka:29092
+      - LOGGING_TOPIC=jayspay-logging.out.stdout
+
+
+  task-consumer:
+    image: jays-pay-task-consumer:1.0.0
+    networks:
+      - jayspay_network
+    restart: always
+    depends_on:
+      - kafka
+      - zookeeper
+    environment:
+      - KAFKA_CLUSTERS_BOOTSTRAPSERVERS=kafka:29092
+      - TASK_TOPIC=jayspay.task.topic
+      - TASK_RESULT_TOPIC=jayspay.task.result.topic
+
+  remittance-service:
+    image: jays-pay-remittance-service:1.0.0
+    networks:
+      - jayspay_network
+    ports:
+      - "8084:8080"
+    restart: always
+    depends_on:
+      - kafka
+      - mysql
+    environment:
+      - AXON_AXONSERVER_SERVERS=axon-server:8124
+      - AXON_SERIALIZER_EVENTS=jackson
+      - AXON_SERIALIZER_MESSAGES=jackson
+      - AXON_SERIALIZER_GENERAL=xstream
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/jayspay_pay?useSSL=false&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=rootpassword
+      - SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=org.hibernate.dialect.MySQL5InnoDBDialect
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=create-drop
+      - KAFKA_CLUSTERS_BOOTSTRAPSERVERS=kafka:29092
+      - LOGGING_TOPIC=fastcampus.logging.out.stdout
+      - SERVICE_MEMBERSHIP_URL=http://membership-service:8080
+      - SERVICE_BANKING_URL=http://banking-service:8080
+      - SERVICE_MONEY_URL=http://money-service:8080
 networks:
   jayspay_network:
     driver: bridge
