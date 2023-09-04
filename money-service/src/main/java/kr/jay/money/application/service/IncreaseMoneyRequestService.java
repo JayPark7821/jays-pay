@@ -4,8 +4,12 @@ import kr.jay.common.CountDownLatchManager;
 import kr.jay.common.RechargingMoneyTask;
 import kr.jay.common.SubTask;
 import kr.jay.common.UseCase;
+import kr.jay.money.adapter.axon.command.MemberMoneyCreatedCommand;
 import kr.jay.money.adapter.out.persistence.MemberMoneyJpaEntity;
 import kr.jay.money.adapter.out.persistence.MoneyChangingRequestMapper;
+import kr.jay.money.application.port.in.CreateMemberMoneyCommand;
+import kr.jay.money.application.port.in.CreateMemberMoneyPort;
+import kr.jay.money.application.port.in.CreateMemberMoneyUseCase;
 import kr.jay.money.application.port.in.IncreaseMoneyRequestCommand;
 import kr.jay.money.application.port.in.IncreaseMoneyRequestUseCase;
 import kr.jay.money.application.port.out.GetMembershipPort;
@@ -14,6 +18,7 @@ import kr.jay.money.application.port.out.SendRechargingMoneyTaskPort;
 import kr.jay.money.domain.MemberMoney;
 import kr.jay.money.domain.MoneyChangingRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import javax.transaction.Transactional;
 
@@ -21,16 +26,21 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import org.axonframework.commandhandling.gateway.CommandGateway;
+
+@Slf4j
 @UseCase
 @RequiredArgsConstructor
 @Transactional
-public class IncreaseMoneyRequestService implements IncreaseMoneyRequestUseCase {
+public class IncreaseMoneyRequestService implements IncreaseMoneyRequestUseCase, CreateMemberMoneyUseCase {
 
     private final CountDownLatchManager countDownLatchManager;
     private final SendRechargingMoneyTaskPort sendRechargingMoneyTaskPort;
     private final GetMembershipPort membershipPort;
     private final IncreaseMoneyPort increaseMoneyPort;
     private final MoneyChangingRequestMapper mapper;
+    private final CommandGateway commandGateway;
+    private final CreateMemberMoneyPort createMemberMoneyPort;
 
     @Override
     public MoneyChangingRequest increaseMoneyRequest(IncreaseMoneyRequestCommand command) {
@@ -149,4 +159,22 @@ public class IncreaseMoneyRequestService implements IncreaseMoneyRequestUseCase 
         return null;
     }
 
+    @Override
+    public void createMemeberMoney(final CreateMemberMoneyCommand command) {
+        final MemberMoneyCreatedCommand axonCommand =
+            new MemberMoneyCreatedCommand(command.getMembershipId());
+        commandGateway.send(axonCommand)
+            .whenComplete((result, throwable) -> {
+                if (throwable != null) {
+                    log.error("error", throwable);
+                    throw new RuntimeException(throwable);
+                } else {
+                    log.info("success {} ", result);
+                    createMemberMoneyPort.createMemberMoney(
+                        new MemberMoney.MembershipId(command.getMembershipId()),
+                        new MemberMoney.MoneyAggregateIdentifier(result.toString())
+                    );
+                }
+            });
+    }
 }

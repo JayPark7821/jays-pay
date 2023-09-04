@@ -1,6 +1,8 @@
 package kr.jay.money.adapter.in.web;
 
 import kr.jay.common.WebAdapter;
+import kr.jay.money.application.port.in.CreateMemberMoneyCommand;
+import kr.jay.money.application.port.in.CreateMemberMoneyUseCase;
 import kr.jay.money.application.port.in.IncreaseMoneyRequestCommand;
 import kr.jay.money.application.port.in.IncreaseMoneyRequestUseCase;
 import kr.jay.money.domain.MoneyChangingRequest;
@@ -15,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class RequestMoneyChangingController {
     private final IncreaseMoneyRequestUseCase increaseMoneyRequestUseCase;
-
+    private final CreateMemberMoneyUseCase createMemberMoneyUseCase;
     // private final DecreaseMoneyRequestUseCase decreaseMoneyRequestUseCase;
 
     @PostMapping(path = "/money/increase")
@@ -68,4 +70,23 @@ public class RequestMoneyChangingController {
         // return decreaseMoneyRequestUseCase.decreaseMoneyChangingRequest(command);
         return null;
     }
+
+    @PostMapping("/money/create-member-money")
+    void createMemberMoney(@RequestBody CreateMemberMoneyRequest request) {
+        createMemberMoneyUseCase.createMemeberMoney(
+            CreateMemberMoneyCommand.builder()
+            .membershipId(request.getMembershipId())
+            .build()
+        );
+    }
+    //
+    // @PostMapping("/money/increase-eda")
+    // void increaseMoneyChangingRequestByEvent(@RequestBody IncreaseMoneyChangingRequest request) {
+    //     IncreaseMoneyRequestCommand command = IncreaseMoneyRequestCommand.builder()
+    //             .targetMembershipId(request.getTargetMembershipId())
+    //             .amount(request.getAmount())
+    //             .build();
+    //
+    //     increaseMoneyRequestUseCase.increaseMoneyRequestByEvent(command);
+    // }
 }
