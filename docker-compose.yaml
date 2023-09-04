@@ -1,5 +1,18 @@
-version: '3.1'
+version: '1'
 services:
+  axon-server:
+    container_name: axon-server
+    image: axoniq/axonserver:4.6.3-jdk-11-dev
+    networks:
+      - jayspay_network
+    ports:
+      - "8024:8024"
+      - "8124:8124"
+    volumes:
+      - ./axon-server-se/data:/axonserver/data
+      - ./axon-server-se/events:/axonserver/events
+      - ./axon-server-se/config:/axonserver/config:ro
+
   mysql:
     image: mysql:8.0
     networks:
@@ -30,7 +43,7 @@ services:
       - AXON_SERIALIZER_EVENTS=jackson
       - AXON_SERIALIZER_MESSAGES=jackson
       - AXON_SERIALIZER_GENERAL=xstream
-      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/jayspay_pay?useSSL=false&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/jays_pay?useSSL=false&allowPublicKeyRetrieval=true
       - SPRING_DATASOURCE_USERNAME=root
       - SPRING_DATASOURCE_PASSWORD=rootpassword
       - SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=org.hibernate.dialect.MySQL5InnoDBDialect
@@ -51,7 +64,7 @@ services:
       - AXON_SERIALIZER_EVENTS=jackson
       - AXON_SERIALIZER_MESSAGES=jackson
       - AXON_SERIALIZER_GENERAL=xstream
-      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/jayspay_pay?useSSL=false&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/jays_pay?useSSL=false&allowPublicKeyRetrieval=true
       - SPRING_DATASOURCE_USERNAME=root
       - SPRING_DATASOURCE_PASSWORD=rootpassword
       - SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=org.hibernate.dialect.MySQL5InnoDBDialect
@@ -73,7 +86,7 @@ services:
       - AXON_SERIALIZER_EVENTS=jackson
       - AXON_SERIALIZER_MESSAGES=jackson
       - AXON_SERIALIZER_GENERAL=xstream
-      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/jayspay_pay?useSSL=false&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/jays_pay?useSSL=false&allowPublicKeyRetrieval=true
       - SPRING_DATASOURCE_USERNAME=root
       - SPRING_DATASOURCE_PASSWORD=rootpassword
       - SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=org.hibernate.dialect.MySQL5InnoDBDialect
@@ -173,7 +186,7 @@ services:
       - AXON_SERIALIZER_EVENTS=jackson
       - AXON_SERIALIZER_MESSAGES=jackson
       - AXON_SERIALIZER_GENERAL=xstream
-      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/jayspay_pay?useSSL=false&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/jays_pay?useSSL=false&allowPublicKeyRetrieval=true
       - SPRING_DATASOURCE_USERNAME=root
       - SPRING_DATASOURCE_PASSWORD=rootpassword
       - SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=org.hibernate.dialect.MySQL5InnoDBDialect
@@ -183,6 +196,27 @@ services:
       - SERVICE_MEMBERSHIP_URL=http://membership-service:8080
       - SERVICE_BANKING_URL=http://banking-service:8080
       - SERVICE_MONEY_URL=http://money-service:8080
+
+volumes:
+  axonserver-data:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: ${PWD}/axon-server-se/data
+  axonserver-events:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: ${PWD}/axon-server-se/events
+  axonserver-config:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: ${PWD}/axon-server-se/config
+
 networks:
   jayspay_network:
     driver: bridge
