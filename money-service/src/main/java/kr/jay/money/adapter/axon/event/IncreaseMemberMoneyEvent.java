@@ -3,30 +3,29 @@ package kr.jay.money.adapter.axon.event;
 import javax.validation.constraints.NotNull;
 
 import kr.jay.common.SelfValidating;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 /**
- * MemberMoneyCreatedEvent
+ * IncreaseMemberMoneyEvent
  *
  * @author jaypark
  * @version 1.0.0
- * @since 2023/09/04
+ * @since 2023/09/05
  */
 
+
+@AllArgsConstructor
 @NoArgsConstructor
 @Builder
 @Data
 @EqualsAndHashCode(callSuper = false)
-public class MemberMoneyCreatedEvent extends SelfValidating<MemberMoneyCreatedEvent> {
+public class IncreaseMemberMoneyEvent extends SelfValidating<MemberMoneyCreatedEvent> {
 
-	@NotNull
-	private String membershipId;
-
-	public MemberMoneyCreatedEvent(final String membershipId) {
-		this.membershipId = membershipId;
-		this.validateSelf();
-	}
+	private String aggregateIdentifier;
+	private String targetMembershipId;
+	private int amount;
 }

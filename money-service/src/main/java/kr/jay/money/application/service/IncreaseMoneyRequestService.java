@@ -4,12 +4,14 @@ import kr.jay.common.CountDownLatchManager;
 import kr.jay.common.RechargingMoneyTask;
 import kr.jay.common.SubTask;
 import kr.jay.common.UseCase;
+import kr.jay.money.adapter.axon.command.IncreaseMemberMoneyCommand;
 import kr.jay.money.adapter.axon.command.MemberMoneyCreatedCommand;
 import kr.jay.money.adapter.out.persistence.MemberMoneyJpaEntity;
 import kr.jay.money.adapter.out.persistence.MoneyChangingRequestMapper;
 import kr.jay.money.application.port.in.CreateMemberMoneyCommand;
 import kr.jay.money.application.port.in.CreateMemberMoneyPort;
 import kr.jay.money.application.port.in.CreateMemberMoneyUseCase;
+import kr.jay.money.application.port.in.GetMemberMoneyPort;
 import kr.jay.money.application.port.in.IncreaseMoneyRequestCommand;
 import kr.jay.money.application.port.in.IncreaseMoneyRequestUseCase;
 import kr.jay.money.application.port.out.GetMembershipPort;
@@ -41,6 +43,8 @@ public class IncreaseMoneyRequestService implements IncreaseMoneyRequestUseCase,
     private final MoneyChangingRequestMapper mapper;
     private final CommandGateway commandGateway;
     private final CreateMemberMoneyPort createMemberMoneyPort;
+    private final GetMemberMoneyPort getMemberMoneyPort;
+
 
     @Override
     public MoneyChangingRequest increaseMoneyRequest(IncreaseMoneyRequestCommand command) {
@@ -159,6 +163,7 @@ public class IncreaseMoneyRequestService implements IncreaseMoneyRequestUseCase,
         return null;
     }
 
+
     @Override
     public void createMemeberMoney(final CreateMemberMoneyCommand command) {
         final MemberMoneyCreatedCommand axonCommand =
@@ -176,5 +181,33 @@ public class IncreaseMoneyRequestService implements IncreaseMoneyRequestUseCase,
                     );
                 }
             });
+    }
+
+    @Override
+    public void increaseMoneyRequestByEvent(final IncreaseMoneyRequestCommand command) {
+        final MemberMoneyJpaEntity memberMoneyJpaEntity =
+            getMemberMoneyPort.getMemberMoney(new MemberMoney.MembershipId(command.getTargetMembershipId()));
+
+        final String aggregateIdentifier = memberMoneyJpaEntity.getAggregateIdentifier();
+
+        commandGateway.send(IncreaseMemberMoneyCommand.builder()
+                .aggregateIdentifier(aggregateIdentifier)
+                .membershipId(command.getTargetMembershipId())
+                .amount(command.getAmount())
+                .build())
+            .whenComplete(
+                (result, throwable) -> {
+                    if (throwable != null) {
+                        log.error("error", throwable);
+                        throw new RuntimeException(throwable);
+                    } else {
+                        log.info("increase money event  success {} ", result);
+                        increaseMoneyPort.increaseMoney(
+                            new MemberMoney.MembershipId(command.getTargetMembershipId())
+                            ,command.getAmount());
+
+                    }
+                }
+            );
     }
 }

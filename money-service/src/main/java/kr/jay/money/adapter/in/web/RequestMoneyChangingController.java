@@ -79,14 +79,14 @@ public class RequestMoneyChangingController {
             .build()
         );
     }
-    //
-    // @PostMapping("/money/increase-eda")
-    // void increaseMoneyChangingRequestByEvent(@RequestBody IncreaseMoneyChangingRequest request) {
-    //     IncreaseMoneyRequestCommand command = IncreaseMoneyRequestCommand.builder()
-    //             .targetMembershipId(request.getTargetMembershipId())
-    //             .amount(request.getAmount())
-    //             .build();
-    //
-    //     increaseMoneyRequestUseCase.increaseMoneyRequestByEvent(command);
-    // }
+
+    @PostMapping("/money/increase-eda")
+    void increaseMoneyChangingRequestByEvent(@RequestBody IncreaseMoneyChangingRequest request) {
+        IncreaseMoneyRequestCommand command = IncreaseMoneyRequestCommand.builder()
+                .targetMembershipId(request.getTargetMembershipId())
+                .amount(request.getAmount())
+                .build();
+
+        increaseMoneyRequestUseCase.increaseMoneyRequestByEvent(command);
+    }
 }
